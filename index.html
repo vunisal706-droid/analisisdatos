@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#6366f1">
+    <title>Análisis de Actas Escolares</title>
+    
+    <link rel="manifest" href="manifest.json">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #ddd6fe 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .card.recommended {
+            border: 3px solid #10b981;
+            position: relative;
+        }
+
+        .badge-recommended {
+            position: absolute;
+            top: -12px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 0.25rem 1rem;
+            border-radius: 1rem;
+            font-weight: bold;
+            font-size: 0.875rem;
+        }
+
+        h1 {
+            color: #1f2937;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        h2 {
+            color: #374151;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        h3 {
+            color: #4b5563;
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: #6366f1;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #4f46e5;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-info {
+            background: #0ea5e9;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #0284c7;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .option-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .option-card:hover {
+            border-color: #6366f1;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .option-card.recommended {
+            border-color: #10b981;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        }
+
+        .emoji {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .checkbox-item {
+            padding: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            border-color: #6366f1;
+        }
+
+        .checkbox-item.selected {
+            border-color: #6366f1;
+            background: #eef2ff;
+        }
+
+        .stat-box {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        .alert {
+            background: #fef2f2;
+            border: 2px solid #ef4444;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            color: #dc2626;
+            font-weight: 600;
+        }
+
+        .comment-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            white-space: pre-line;
+            line-height: 1.6;
+        }
+
+        .global-comment {
+            background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
+            border-left: 4px solid #6366f1;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            white-space: pre-line;
+            line-height: 1.6;
+        }
+
+        .grade-badge {
+            background: white;
+            border: 2px solid;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .grade-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .grade-count {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .grade-percent {
+            font-size: 1.125rem;
+            font-weight: bold;
+            margin-top: 0.25rem;
+        }
+
+        .chart-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: #6366f1;
+            color: white;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .file-label:hover {
+            background: #4f46e5;
+        }
+
+        .back-link {
+            color: #6366f1;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+
+        .back-link:hover {
+            color: #4f46e5;
+        }
+
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .input-group input,
+        .input-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-family: monospace;
+        }
+
+        .input-group textarea {
+            min-height: 350px;
+            resize: vertical;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .help-text {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+
+        .success-box {
+            background: #d1fae5;
+            border: 2px solid #10b981;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            color: #065f46;
+            margin-top: 1rem;
+        }
+
+        .error-box {
+            background: #fee2e2;
+            border: 2px solid #ef4444;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            color: #991b1b;
+            margin-top: 1rem;
+        }
+
+        .info-box {
+            background: #dbeafe;
+            border: 2px solid #3b82f6;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            color: #1e40af;
+            margin-bottom: 1rem;
+        }
+
+        .info-box ul {
+            margin-left: 1.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .info-box li {
+            margin-bottom: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+        const state = {
+            stage: null,
+            selectedCourse: null,
+            uploadedFile: null,
+            pdfData: null,
+            subjects: [],
+            selectedSubjects: [],
+            statistics: null,
+            globalStats: null,
+            totalStudents: 21
+        };
+
+        const infantilCourses = ['3 años', '4 años', '5 años'];
+        const primariaCourses = ['1º Primaria', '2º Primaria', '3º Primaria', '4º Primaria', '5º Primaria', '6º Primaria'];
+        const infantilGrades = ['NAD', 'ADE', 'BUE', 'EXC'];
+        const primariaGrades = ['IN', 'SU', 'BI', 'NT', 'SB'];
+
+        const COLORS = {
+            NAD: '#ef4444', IN: '#ef4444',
+            ADE: '#fbbf24', SU: '#fbbf24',
+            BUE: '#60a5fa', BI: '#60a5fa',
+            EXC: '#10b981', NT: '#34d399', SB: '#10b981'
+        };
+
+        // Funciones para dibujar gráficas
+        function drawPieChart(canvasId, data, colors) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 40;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            let currentAngle = -Math.PI / 2;
+            const total = data.reduce((sum, item) => sum + item.value, 0);
+            
+            data.forEach((item, index) => {
+                const sliceAngle = (2 * Math.PI * item.value) / total;
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+                ctx.closePath();
+                ctx.fillStyle = colors[index];
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                const midAngle = currentAngle + sliceAngle / 2;
+                const labelX = centerX + Math.cos(midAngle) * (radius * 0.7);
+                const labelY = centerY + Math.sin(midAngle) * (radius * 0.7);
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(item.percentage + '%', labelX, labelY);
+                
+                currentAngle += sliceAngle;
+            });
+            
+            let legendY = 20;
+            data.forEach((item, index) => {
+                ctx.fillStyle = colors[index];
+                ctx.fillRect(10, legendY, 20, 20);
+                ctx.fillStyle = '#374151';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(item.label + ': ' + item.value, 35, legendY + 15);
+                legendY += 30;
+            });
+        }
+
+        function drawBarChart(canvasId, data, colors) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const padding = 40;
+            const chartWidth = canvas.width - padding * 2;
+            const chartHeight = canvas.height - padding * 2;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const maxValue = Math.max(...data.map(d => d.value), 1);
+            const barWidth = chartWidth / data.length * 0.7;
+            const barSpacing = chartWidth / data.length;
+            
+            data.forEach((item, index) => {
+                const barHeight = (item.value / maxValue) * chartHeight;
+                const x = padding + index * barSpacing + (barSpacing - barWidth) / 2;
+                const y = canvas.height - padding - barHeight;
+                
+                ctx.fillStyle = colors[index] || '#6366f1';
+                ctx.fillRect(x, y, barWidth, barHeight);
+                
+                ctx.fillStyle = '#374151';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(item.value, x + barWidth / 2, y - 5);
+                
+                ctx.fillText(item.label, x + barWidth / 2, canvas.height - padding + 20);
+            });
+            
+            ctx.strokeStyle = '#9ca3af';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, canvas.height - padding);
+            ctx.lineTo(canvas.width - padding, canvas.height - padding);
+            ctx.stroke();
+        }
+
+        function showPasteInput() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="container">
+                    <a href="#" class="back-link" onclick="state.uploadedFile = null; render(); return false;">← Volver</a>
+                    <h1>📋 Pegar Tabla del Acta</h1>
+                    
+                    <div class="card">
+                        <div class="info-box">
+                            <strong>📝 Instrucciones:</strong>
+                            <ol style="margin-left: 1.5rem; margin-top: 0.5rem; line-height: 1.8;">
+                                <li><strong>Abre el PDF</strong> del acta en tu ordenador</li>
+                                <li><strong>Selecciona toda la tabla</strong> con el ratón (arrastra sobre la tabla)</li>
+                                <li><strong>Copia</strong> con Ctrl+C (Windows) o Cmd+C (Mac)</li>
+                                <li><strong>Pega aquí abajo</strong> con Ctrl+V o Cmd+V</li>
+                            </ol>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Pega aquí el contenido de la tabla:</label>
+                            <textarea id="pastedTable" placeholder="Pega aquí el texto copiado del PDF...&#10;&#10;Ejemplo:&#10;1 apellido, nombre falso IN SU BI NT SB&#10;2 nombre y apellido falso SU BI NT IN SB&#10;..."></textarea>
+                            <p class="help-text">
+                                💡 La aplicación detectará automáticamente las calificaciones
+                            </p>
+                        </div>
+
+                        <button class="btn btn-success" style="width: 100%; margin-top: 1rem;" onclick="processPastedTable()">
+                            Analizar Tabla
+                        </button>
+
+                        <div id="parseResult"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function processPastedTable() {
+            const textarea = document.getElementById('pastedTable');
+            const text = textarea.value;
+            const resultDiv = document.getElementById('parseResult');
+
+            if (!text.trim()) {
+                resultDiv.innerHTML = `
+                    <div class="error-box">
+                        <strong>⚠️ No has pegado nada</strong>
+                        <p>Por favor, copia la tabla del PDF y pégala en el área de texto</p>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                const parsed = parseTableText(text);
+                
+                if (parsed.success) {
+                    state.pdfData = parsed.grades;
+                    state.totalStudents = parsed.totalStudents;
+                    state.subjects = Object.keys(parsed.grades);
+                    state.uploadedFile = { name: 'pasted-table' };
+
+                    resultDiv.innerHTML = `
+                        <div class="success-box">
+                            <strong>✅ Tabla procesada correctamente</strong>
+                            <p><strong>${parsed.totalStudents}</strong> alumnos detectados</p>
+                            <p><strong>${state.subjects.length}</strong> asignaturas encontradas: ${state.subjects.join(', ')}</p>
+                        </div>
+                    `;
+
+                    setTimeout(() => {
+                        render();
+                    }, 1500);
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error-box">
+                            <strong>⚠️ No se pudo procesar la tabla automáticamente</strong>
+                            <p>${parsed.error}</p>
+                            <button class="btn btn-primary" onclick="showManualInput()" style="margin-top: 1rem;">
+                                Introducir datos manualmente
+                            </button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error-box">
+                        <strong>❌ Error al procesar</strong>
+                        <p>${error.message}</p>
+                        <button class="btn btn-primary" onclick="showManualInput()" style="margin-top: 1rem;">
+                            Introducir datos manualmente
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function parseTableText(text) {
+            const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
+            const subjectCodes = state.stage === 'infantil'
+                ? ['Conocimiento', 'Lenguajes', 'Ingles', 'Religion']
+                : ['CMN', 'EAR', 'EFI', 'LCL', 'ING', 'MAT', 'FR2', 'VCE', 'REL', 'REV'];
+
+            const result = {
+                success: false,
+                grades: {},
+                totalStudents: 0,
+                error: ''
+            };
+
+            // Inicializar contadores
+            subjectCodes.forEach(subject => {
+                result.grades[subject] = {};
+                grades.forEach(grade => {
+                    result.grades[subject][grade] = 0;
+                });
+            });
+
+            // Limpiar y normalizar texto
+            const normalizedText = text
+                .toUpperCase()
+                .replace(/\s+/g, ' ')
+                .replace(/[áàâãä]/gi, 'A')
+                .replace(/[éèêë]/gi, 'E')
+                .replace(/[íìîï]/gi, 'I')
+                .replace(/[óòôõö]/gi, 'O')
+                .replace(/[úùûü]/gi, 'U');
+
+            const lines = normalizedText.split('\n');
+            let studentsFound = 0;
+
+            // Procesar cada línea
+            lines.forEach(line => {
+                const trimmedLine = line.trim();
+                if (!trimmedLine) return;
+
+                // Detectar si es una línea de alumno (comienza con número o tiene nombre)
+                const hasNumber = /^\d+/.test(trimmedLine);
+                const hasName = /[A-Z]{3,}/.test(trimmedLine);
+
+                if (hasNumber || hasName) {
+                    studentsFound++;
+
+                    // Buscar calificaciones en la línea
+                    subjectCodes.forEach(subject => {
+                        grades.forEach(grade => {
+                            // Buscar el patrón de calificación
+                            const gradePattern = new RegExp('\\b' + grade + '\\b', 'g');
+                            const matches = trimmedLine.match(gradePattern);
+                            if (matches) {
+                                // Si encontramos la calificación, incrementar contador
+                                // Pero solo una vez por asignatura por línea
+                                result.grades[subject][grade]++;
+                            }
+                        });
+                    });
+                }
+            });
+
+            if (studentsFound === 0) {
+                result.error = 'No se detectaron alumnos en el texto. Asegúrate de copiar toda la tabla.';
+                return result;
+            }
+
+            // Verificar que tenemos datos válidos
+            let hasValidData = false;
+            subjectCodes.forEach(subject => {
+                const total = Object.values(result.grades[subject]).reduce((sum, val) => sum + val, 0);
+                if (total > 0) hasValidData = true;
+            });
+
+            if (!hasValidData) {
+                result.error = 'No se detectaron calificaciones válidas. Verifica que el formato sea correcto.';
+                return result;
+            }
+
+            result.totalStudents = studentsFound;
+            result.success = true;
+
+            return result;
+        }
+
+        function showManualInput() {
+            const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
+            const subjects = state.stage === 'infantil' 
+                ? ['Conocimiento de sí mismo', 'Conocimiento del entorno', 'Lenguajes: comunicación', 'Inglés', 'Religión']
+                : ['CMN', 'EAR', 'EFI', 'LCL', 'ING', 'MAT', 'FR2', 'VCE', 'REL', 'REV'];
+            
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="container">
+                    <a href="#" class="back-link" onclick="state.uploadedFile = null; render(); return false;">← Volver</a>
+                    <h1>✏️ Introducir Datos Manualmente</h1>
+                    
+                    <div class="card">
+                        <div class="input-group">
+                            <label>Número total de alumnos:</label>
+                            <input type="number" id="totalStudents" value="${state.totalStudents}" min="1" max="100">
+                        </div>
+
+                        <h3>Introduce las calificaciones por asignatura</h3>
+                        <p class="help-text">Para cada asignatura, indica cuántos alumnos tienen cada calificación</p>
+                        
+                        <div id="manualInputFields"></div>
+                        
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;" onclick="processManualData()">
+                            Procesar Datos
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            const fieldsContainer = document.getElementById('manualInputFields');
+            subjects.forEach((subject, idx) => {
+                const existingData = state.pdfData && state.pdfData[subject] ? state.pdfData[subject] : {};
+                
+                fieldsContainer.innerHTML += `
+                    <div class="card" style="background: #f9fafb; margin-top: 1rem;">
+                        <h3>${subject}</h3>
+                        <div class="grid-3" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+                            ${grades.map(grade => `
+                                <div class="input-group">
+                                    <label>${grade}:</label>
+                                    <input type="number" id="${subject}-${grade}" value="${existingData[grade] || 0}" min="0">
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function processManualData() {
+            const totalStudents = parseInt(document.getElementById('totalStudents').value);
+            state.totalStudents = totalStudents;
+            
+            const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
+            const subjects = state.stage === 'infantil' 
+                ? ['Conocimiento de sí mismo', 'Conocimiento del entorno', 'Lenguajes: comunicación', 'Inglés', 'Religión']
+                : ['CMN', 'EAR', 'EFI', 'LCL', 'ING', 'MAT', 'FR2', 'VCE', 'REL', 'REV'];
+            
+            const manualData = {};
+            subjects.forEach(subject => {
+                manualData[subject] = {};
+                grades.forEach(grade => {
+                    const inputId = `${subject}-${grade}`;
+                    const input = document.getElementById(inputId);
+                    manualData[subject][grade] = parseInt(input.value) || 0;
+                });
+            });
+            
+            state.pdfData = manualData;
+            state.subjects = subjects;
+            state.uploadedFile = { name: 'manual-input' };
+            render();
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+            
+            if (!state.stage) {
+                app.innerHTML = `
+                    <div class="container">
+                        <div style="text-align: center; margin-bottom: 3rem;">
+                            <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">
+                                Sistema de Análisis de Actas Escolares
+                            </h1>
+                            <p style="color: #6b7280; font-size: 1.125rem;">
+                                Análisis estadístico de resultados académicos
+                            </p>
+                        </div>
+                        
+                        <div class="grid-2">
+                            <div class="option-card" onclick="selectStage('infantil')">
+                                <div class="emoji">🎨</div>
+                                <h2>Infantil</h2>
+                                <p style="color: #6b7280;">3 años, 4 años, 5 años</p>
+                            </div>
+                            
+                            <div class="option-card" onclick="selectStage('primaria')">
+                                <div class="emoji">📚</div>
+                                <h2>Primaria</h2>
+                                <p style="color: #6b7280;">1º a 6º de Primaria</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (!state.selectedCourse) {
+                const courses = state.stage === 'infantil' ? infantilCourses : primariaCourses;
+                app.innerHTML = `
+                    <div class="container">
+                        <a href="#" class="back-link" onclick="resetAll(); return false;">← Volver al inicio</a>
+                        
+                        <div style="text-align: center; margin-bottom: 3rem;">
+                            <h1>${state.stage === 'infantil' ? 'Educación Infantil' : 'Educación Primaria'}</h1>
+                            <p style="color: #6b7280;">Selecciona el curso a analizar</p>
+                        </div>
+                        
+                        <div class="grid-3">
+                            ${courses.map(course => `
+                                <div class="option-card" onclick="selectCourse('${course}')">
+                                    <h3>${course}</h3>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else if (!state.uploadedFile) {
+                app.innerHTML = `
+                    <div class="container">
+                        <a href="#" class="back-link" onclick="state.selectedCourse = null; render(); return false;">← Cambiar curso</a>
+                        <h1>${state.stage === 'infantil' ? 'Infantil' : 'Primaria'} - ${state.selectedCourse}</h1>
+                        
+                        <div class="card">
+                            <h2 style="text-align: center; margin-bottom: 2rem;">¿Cómo quieres introducir los datos?</h2>
+                            
+                            <div class="grid-3">
+                                <div class="option-card recommended" onclick="showPasteInput()">
+                                    <span class="badge-recommended">⭐ Recomendado</span>
+                                    <div class="emoji">📋</div>
+                                    <h3>Pegar tabla</h3>
+                                    <p style="color: #065f46; font-size: 0.9rem; font-weight: 600;">Más rápido y preciso</p>
+                                </div>
+                                
+                                <div class="option-card" onclick="showManualInput()">
+                                    <div class="emoji">✏️</div>
+                                    <h3>Manual</h3>
+                                    <p style="color: #6b7280; font-size: 0.9rem;">Introduce dato a dato</p>
+                                </div>
+                                
+                                <div class="option-card" onclick="alert('Próximamente disponible')">
+                                    <div class="emoji">📄</div>
+                                    <h3>Subir PDF</h3>
+                                    <p style="color: #6b7280; font-size: 0.9rem;">Próximamente</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (!state.statistics) {
+                app.innerHTML = `
+                    <div class="container">
+                        <a href="#" class="back-link" onclick="state.selectedCourse = null; state.uploadedFile = null; render(); return false;">← Cambiar método</a>
+                        <h1>${state.stage === 'infantil' ? 'Infantil' : 'Primaria'} - ${state.selectedCourse}</h1>
+                        
+                        <div class="card">
+                            <h2>📋 Seleccionar Asignaturas para Análisis</h2>
+                            
+                            <div class="grid-3">
+                                ${state.subjects.map(subject => `
+                                    <div class="checkbox-item ${state.selectedSubjects.includes(subject) ? 'selected' : ''}" 
+                                         onclick="toggleSubject('${subject}')">
+                                        <input type="checkbox" ${state.selectedSubjects.includes(subject) ? 'checked' : ''} 
+                                               onchange="event.stopPropagation()">
+                                        <span>${subject}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            
+                            <button class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;" 
+                                    onclick="generateStatistics()" 
+                                    ${state.selectedSubjects.length === 0 ? 'disabled' : ''}>
+                                Generar Estadísticas (${state.selectedSubjects.length} asignaturas)
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                renderStatistics();
+            }
+        }
+
+        function renderStatistics() {
+            const app = document.getElementById('app');
+            
+            let html = `
+                <div class="container">
+                    <div class="flex-between">
+                        <h1>📊 Resultados del Análisis</h1>
+                        <div class="btn-group">
+                            <button class="btn btn-success" onclick="downloadPDF()">
+                                💾 PDF
+                            </button>
+                            <button class="btn btn-info" onclick="downloadExcel()">
+                                📊 Excel
+                            </button>
+                            <button class="btn btn-primary" onclick="state.statistics = null; state.globalStats = null; state.selectedSubjects = []; render();">
+                                Nuevo Análisis
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2>Resumen General</h2>
+                        <div class="grid-3">
+                            <div class="stat-box" style="background: #dbeafe;">
+                                <div class="stat-label">Total Alumnos</div>
+                                <div class="stat-value">${state.totalStudents}</div>
+                            </div>
+                            <div class="stat-box" style="background: #d1fae5;">
+                                <div class="stat-label">Asignaturas Analizadas</div>
+                                <div class="stat-value">${state.statistics.length}</div>
+                            </div>
+                            <div class="stat-box" style="background: #fef3c7;">
+                                <div class="stat-label">Alertas</div>
+                                <div class="stat-value" style="color: #dc2626;">${state.statistics.filter(s => s.alert).length}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2>📊 Estadísticas Globales</h2>
+                        
+                        <div class="grid-2">
+                            <div>
+                                <h3 style="text-align: center;">Aprobados vs Suspensos</h3>
+                                <div class="chart-container">
+                                    <canvas id="globalPieChart" width="400" height="300"></canvas>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 style="text-align: center;">Distribución de Calificaciones</h3>
+                                <div class="chart-container">
+                                    <canvas id="globalBarChart" width="400" height="300"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3>Detalle por Calificación</h3>
+                        <div class="grid-3" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                            ${Object.entries(state.globalStats.gradePercentages).map(([grade, percentage]) => `
+                                <div class="grade-badge" style="border-color: ${COLORS[grade]};">
+                                    <div class="grade-name" style="color: ${COLORS[grade]};">${grade}</div>
+                                    <div class="grade-count">${state.globalStats.gradeDistribution[grade]} calif.</div>
+                                    <div class="grade-percent">${percentage}%</div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div style="margin-top: 1.5rem; padding: 1rem; background: #f3f4f6; border-radius: 0.5rem;">
+                            <strong>Totales:</strong> 
+                            <span style="color: #10b981;">✓ Aprobados: ${state.globalStats.passPercentage}%</span> | 
+                            <span style="color: #ef4444;">✗ Suspensos: ${state.globalStats.failPercentage}%</span>
+                        </div>
+
+                        <div class="global-comment">
+                            ${state.globalStats.comment}
+                        </div>
+                    </div>
+
+                    ${state.statistics.map((stat, idx) => `
+                        <div class="card">
+                            <div class="flex-between">
+                                <h2>${stat.subject}</h2>
+                                ${stat.alert ? `
+                                    <div class="alert">
+                                        ⚠️ Más del 30% de suspensos (${stat.failPercentage}%)
+                                    </div>
+                                ` : ''}
+                            </div>
+
+                            <div class="grid-2">
+                                <div>
+                                    <h3 style="text-align: center;">Aprobados vs Suspensos</h3>
+                                    <div class="chart-container">
+                                        <canvas id="pieChart${idx}" width="350" height="250"></canvas>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 style="text-align: center;">Distribución de Calificaciones</h3>
+                                    <div class="chart-container">
+                                        <canvas id="barChart${idx}" width="350" height="250"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h3>Detalle por Calificación</h3>
+                            <div class="grid-3" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+                                ${Object.entries(stat.gradePercentages).map(([grade, percentage]) => `
+                                    <div class="grade-badge" style="border-color: ${COLORS[grade]};">
+                                        <div class="grade-name" style="color: ${COLORS[grade]};">${grade}</div>
+                                        <div class="grade-count">${stat.gradeDistribution[grade]} alumnos</div>
+                                        <div class="grade-percent">${percentage}%</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+
+                            <div class="comment-box">
+                                <strong>📝 Análisis de Resultados:</strong><br><br>
+                                ${stat.comment}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            app.innerHTML = html;
+            
+            setTimeout(() => {
+                drawPieChart('globalPieChart', [
+                    { label: 'Aprobados', value: state.globalStats.passed, percentage: state.globalStats.passPercentage },
+                    { label: 'Suspensos', value: state.globalStats.failed, percentage: state.globalStats.failPercentage }
+                ], ['#10b981', '#ef4444']);
+
+                const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
+                drawBarChart('globalBarChart', 
+                    grades.map(grade => ({
+                        label: grade,
+                        value: state.globalStats.gradeDistribution[grade]
+                    })),
+                    grades.map(grade => COLORS[grade])
+                );
+
+                state.statistics.forEach((stat, idx) => {
+                    drawPieChart(`pieChart${idx}`, [
+                        { label: 'Aprobados', value: stat.passed, percentage: stat.passPercentage },
+                        { label: 'Suspensos', value: stat.failed, percentage: stat.failPercentage }
+                    ], ['#10b981', '#ef4444']);
+
+                    drawBarChart(`barChart${idx}`,
+                        grades.map(grade => ({
+                            label: grade,
+                            value: stat.gradeDistribution[grade]
+                        })),
+                        grades.map(grade => COLORS[grade])
+                    );
+                });
+            }, 100);
+        }
+
+        function selectStage(stage) {
+            state.stage = stage;
+            render();
+        }
+
+        function selectCourse(course) {
+            state.selectedCourse = course;
+            render();
+        }
+
+        function resetAll() {
+            state.stage = null;
+            state.selectedCourse = null;
+            state.uploadedFile = null;
+            state.pdfData = null;
+            state.subjects = [];
+            state.selectedSubjects = [];
+            state.statistics = null;
+            state.globalStats = null;
+            state.totalStudents = 21;
+            render();
+        }
+
+        function toggleSubject(subject) {
+            const idx = state.selectedSubjects.indexOf(subject);
+            if (idx > -1) {
+                state.selectedSubjects.splice(idx, 1);
+            } else {
+                state.selectedSubjects.push(subject);
+            }
+            render();
+        }
+
+        function generateComment(stat, stageType) {
+            let comment = '';
+            
+            if (stat.failPercentage > 50) {
+                comment = `Situacion critica: Mas de la mitad del alumnado (${stat.failPercentage}%) no alcanza los objetivos minimos. Se requiere intervencion inmediata.`;
+            } else if (stat.failPercentage > 30) {
+                comment = `Alerta importante: Un ${stat.failPercentage}% presenta dificultades significativas. Implementar medidas de apoyo.`;
+            } else if (stat.failPercentage > 15) {
+                comment = `Atencion necesaria: El ${stat.failPercentage}% requiere apoyo adicional. Seguimiento individualizado recomendado.`;
+            } else if (stat.failPercentage > 0) {
+                comment = `Resultados satisfactorios: ${stat.passPercentage}% aprobados. Solo ${stat.failPercentage}% necesita refuerzo puntual.`;
+            } else {
+                comment = `Excelentes resultados: 100% del alumnado ha superado los objetivos.`;
+            }
+
+            const excellentGrades = stageType === 'infantil' ? ['EXC'] : ['SB', 'NT'];
+            const excellentCount = excellentGrades.reduce((sum, grade) => sum + (stat.gradeDistribution[grade] || 0), 0);
+            const excellentPercentage = ((excellentCount / stat.total) * 100).toFixed(1);
+            
+            if (excellentPercentage > 50) {
+                comment += ` Destacable: ${excellentPercentage}% alcanza niveles de excelencia.`;
+            } else if (excellentPercentage > 30) {
+                comment += ` Un ${excellentPercentage}% muestra rendimiento excelente.`;
+            }
+
+            return comment;
+        }
+
+        function generateGlobalComment(global, stageType) {
+            const failPercentage = parseFloat(global.failPercentage);
+            let comment = 'ANALISIS GLOBAL DEL CURSO\n\n';
+            
+            if (failPercentage > 40) {
+                comment += `Situacion Critica: ${global.failPercentage}% de calificaciones insuficientes.\n\nRequiere:\n- Revision de metodologias\n- Programas de refuerzo\n- Coordinacion con orientacion`;
+            } else if (failPercentage > 25) {
+                comment += `Necesidad de Mejora: ${global.failPercentage}% insuficientes.\n\nRecomendaciones:\n- Reforzar areas criticas\n- Grupos de apoyo\n- Seguimiento frecuente`;
+            } else if (failPercentage > 10) {
+                comment += `Resultados Aceptables: ${global.passPercentage}% aprobados.\n\n- Mantener apoyo al ${global.failPercentage}% con dificultades\n- Continuar metodologias actuales`;
+            } else {
+                comment += `Resultados Excelentes: ${global.passPercentage}% aprobados.\n\n- Metodologias efectivas\n- Clima favorable\n- Continuar potenciando fortalezas`;
+            }
+
+            const excellentGrades = stageType === 'infantil' ? ['EXC'] : ['SB', 'NT'];
+            const excellentPercentage = excellentGrades.reduce((sum, grade) => 
+                sum + parseFloat(global.gradePercentages[grade] || 0), 0).toFixed(1);
+            
+            comment += `\n\nNivel de Excelencia: ${excellentPercentage}% en niveles mas altos.`;
+            return comment;
+        }
+
+        function generateStatistics() {
+            const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
+            const failGrade = state.stage === 'infantil' ? 'NAD' : 'IN';
+            
+            const stats = state.selectedSubjects.map(subject => {
+                let gradeDistribution = {};
+                
+                if (state.pdfData && state.pdfData[subject]) {
+                    gradeDistribution = state.pdfData[subject];
+                } else {
+                    const total = state.totalStudents;
+                    let remaining = total;
+                    
+                    grades.forEach((grade, idx) => {
+                        if (idx === grades.length - 1) {
+                            gradeDistribution[grade] = remaining;
+                        } else {
+                            const maxForGrade = Math.floor(remaining * 0.4);
+                            const count = Math.floor(Math.random() * maxForGrade);
+                            gradeDistribution[grade] = count;
+                            remaining -= count;
+                        }
+                    });
+                }
+
+                const total = Object.values(gradeDistribution).reduce((sum, val) => sum + val, 0);
+                const failed = gradeDistribution[failGrade] || 0;
+                const passed = total - failed;
+                const failPercentage = total > 0 ? (failed / total) * 100 : 0;
+                const passPercentage = total > 0 ? (passed / total) * 100 : 0;
+
+                const gradePercentages = {};
+                Object.entries(gradeDistribution).forEach(([grade, count]) => {
+                    gradePercentages[grade] = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+                });
+
+                const statObj = {
+                    subject,
+                    total,
+                    gradeDistribution,
+                    gradePercentages,
+                    passed,
+                    failed,
+                    passPercentage: passPercentage.toFixed(1),
+                    failPercentage: failPercentage.toFixed(1),
+                    alert: failPercentage > 30
+                };
+
+                statObj.comment = generateComment(statObj, state.stage);
+                return statObj;
+            });
+
+            state.statistics = stats;
+
+            const globalGradeDistribution = {};
+            grades.forEach(grade => {
+                globalGradeDistribution[grade] = 0;
+            });
+
+            let totalGrades = 0;
+            stats.forEach(stat => {
+                Object.entries(stat.gradeDistribution).forEach(([grade, count]) => {
+                    globalGradeDistribution[grade] += count;
+                    totalGrades += count;
+                });
+            });
+
+            const globalGradePercentages = {};
+            Object.entries(globalGradeDistribution).forEach(([grade, count]) => {
+                globalGradePercentages[grade] = totalGrades > 0 ? ((count / totalGrades) * 100).toFixed(1) : '0.0';
+            });
+
+            const totalFailed = globalGradeDistribution[failGrade];
+            const totalPassed = totalGrades - totalFailed;
+
+            state.globalStats = {
+                totalGrades,
+                gradeDistribution: globalGradeDistribution,
+                gradePercentages: globalGradePercentages,
+                passed: totalPassed,
+                failed: totalFailed,
+                passPercentage: totalGrades > 0 ? ((totalPassed / totalGrades) * 100).toFixed(1) : '0.0',
+                failPercentage: totalGrades > 0 ? ((totalFailed / totalGrades) * 100).toFixed(1) : '0.0'
+            };
+
+            state.globalStats.comment = generateGlobalComment(state.globalStats, state.stage);
+
+            render();
+        }
+
+        function cleanText(text) {
+            return text.replace(/[⚠✅⚡🌟📝📋📊💾🎨📚📤📷✏️📄✓✗]/g, '').trim();
+        }
+
+        function downloadPDF() {
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                
+                pdf.setFontSize(18);
+                pdf.setTextColor(99, 102, 241);
+                pdf.text('INFORME DE ANALISIS DE ACTAS', pageWidth / 2, 20, { align: 'center' });
+                
+                pdf.setFontSize(12);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text(`${state.stage === 'infantil' ? 'Infantil' : 'Primaria'} - ${state.selectedCourse}`, pageWidth / 2, 28, { align: 'center' });
+                pdf.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, pageWidth / 2, 35, { align: 'center' });
+                
+                let y = 48;
+
+                pdf.setFontSize(14);
+                pdf.setTextColor(99, 102, 241);
+                pdf.text('RESUMEN GENERAL', 20, y);
+                y += 8;
+
+                pdf.setFontSize(10);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text(`Total de alumnos: ${state.totalStudents}`, 20, y);
+                y += 6;
+                pdf.text(`Asignaturas analizadas: ${state.statistics.length}`, 20, y);
+                y += 6;
+                pdf.text(`Alertas detectadas: ${state.statistics.filter(s => s.alert).length}`, 20, y);
+                y += 10;
+
+                pdf.setFontSize(14);
+                pdf.setTextColor(99, 102, 241);
+                pdf.text('ESTADISTICAS GLOBALES', 20, y);
+                y += 8;
+
+                pdf.setFontSize(10);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text(`Aprobados: ${state.globalStats.passPercentage}%`, 20, y);
+                y += 6;
+                pdf.text(`Suspensos: ${state.globalStats.failPercentage}%`, 20, y);
+                y += 8;
+
+                const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
+                pdf.text('Distribucion por calificacion:', 20, y);
+                y += 6;
+                grades.forEach(grade => {
+                    pdf.text(`  ${grade}: ${state.globalStats.gradeDistribution[grade]} (${state.globalStats.gradePercentages[grade]}%)`, 20, y);
+                    y += 5;
+                });
+                y += 5;
+
+                const globalComment = cleanText(state.globalStats.comment);
+                const globalLines = pdf.splitTextToSize(globalComment, pageWidth - 40);
+                globalLines.forEach(line => {
+                    if (y > pageHeight - 20) {
+                        pdf.addPage();
+                        y = 20;
+                    }
+                    pdf.text(line, 20, y);
+                    y += 5;
+                });
+                y += 10;
+
+                state.statistics.forEach((stat, index) => {
+                    if (y > pageHeight - 70) {
+                        pdf.addPage();
+                        y = 20;
+                    }
+
+                    pdf.setFontSize(12);
+                    pdf.setTextColor(99, 102, 241);
+                    pdf.text(`${index + 1}. ${stat.subject}`, 20, y);
+                    y += 8;
+
+                    if (stat.alert) {
+                        pdf.setTextColor(239, 68, 68);
+                        pdf.setFontSize(9);
+                        pdf.text(`ALERTA: Mas del 30% de suspensos (${stat.failPercentage}%)`, 20, y);
+                        y += 6;
+                    }
+
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(0, 0, 0);
+                    pdf.text(`Aprobados: ${stat.passPercentage}% | Suspensos: ${stat.failPercentage}%`, 20, y);
+                    y += 6;
+
+                    pdf.text('Distribucion:', 20, y);
+                    y += 5;
+                    grades.forEach(grade => {
+                        pdf.text(`  ${grade}: ${stat.gradeDistribution[grade]} alumnos (${stat.gradePercentages[grade]}%)`, 20, y);
+                        y += 4;
+                    });
+                    y += 5;
+
+                    const comment = cleanText(stat.comment);
+                    const commentLines = pdf.splitTextToSize(comment, pageWidth - 40);
+                    commentLines.forEach(line => {
+                        if (y > pageHeight - 20) {
+                            pdf.addPage();
+                            y = 20;
+                        }
+                        pdf.text(line, 20, y);
+                        y += 4;
+                    });
+
+                    y += 8;
+                });
+
+                pdf.save(`Informe_${state.stage}_${state.selectedCourse}_${new Date().toISOString().split('T')[0]}.pdf`);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al generar PDF');
+            }
+        }
+
+        function downloadExcel() {
+            try {
+                const wb = XLSX.utils.book_new();
+                
+                const resumenData = [
+                    ['INFORME DE ANALISIS DE ACTAS'],
+                    [`${state.stage === 'infantil' ? 'Infantil' : 'Primaria'} - ${state.selectedCourse}`],
+                    [`Fecha: ${new Date().toLocaleDateString('es-ES')}`],
+                    [],
+                    ['RESUMEN GENERAL'],
+                    ['Total de alumnos', state.totalStudents],
+                    ['Asignaturas analizadas', state.statistics.length],
+                    ['Alertas detectadas', state.statistics.filter(s => s.alert).length],
+                    [],
+                    ['ESTADISTICAS GLOBALES'],
+                    ['Aprobados (%)', state.globalStats.passPercentage],
+                    ['Suspensos (%)', state.globalStats.failPercentage],
+                    [],
+                    ['DISTRIBUCION GLOBAL']
+                ];
+
+                const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
+                grades.forEach(grade => {
+                    resumenData.push([
+                        grade,
+                        state.globalStats.gradeDistribution[grade],
+                        `${state.globalStats.gradePercentages[grade]}%`
+                    ]);
+                });
+
+                const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+                XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+
+                const detalleData = [
+                    ['Asignatura', 'Aprobados (%)', 'Suspensos (%)', ...grades.map(g => `${g} (alumnos)`), ...grades.map(g => `${g} (%)`),'Alerta']
+                ];
+
+                state.statistics.forEach(stat => {
+                    const row = [
+                        stat.subject,
+                        stat.passPercentage,
+                        stat.failPercentage,
+                        ...grades.map(g => stat.gradeDistribution[g]),
+                        ...grades.map(g => stat.gradePercentages[g]),
+                        stat.alert ? 'SI' : 'NO'
+                    ];
+                    detalleData.push(row);
+                });
+
+                const wsDetalle = XLSX.utils.aoa_to_sheet(detalleData);
+                XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle Asignaturas');
+
+                const comentariosData = [
+                    ['ANALISIS GLOBAL'],
+                    [cleanText(state.globalStats.comment)],
+                    [],
+                    ['COMENTARIOS POR ASIGNATURA']
+                ];
+
+                state.statistics.forEach(stat => {
+                    comentariosData.push([]);
+                    comentariosData.push([stat.subject]);
+                    comentariosData.push([cleanText(stat.comment)]);
+                });
+
+                const wsComentarios = XLSX.utils.aoa_to_sheet(comentariosData);
+                XLSX.utils.book_append_sheet(wb, wsComentarios, 'Comentarios');
+
+                XLSX.writeFile(wb, `Informe_${state.stage}_${state.selectedCourse}_${new Date().toISOString().split('T')[0]}.xlsx`);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al generar Excel');
+            }
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .catch(err => console.log('SW Error:', err));
+            });
+        }
+
+        render();
+    </script>
+</body>
+</html>
