@@ -548,6 +548,11 @@
         }
 
         function showPasteInput() {
+            const isInfantil = state.stage === 'infantil';
+            const placeholderExample = isInfantil 
+                ? "Pega aquí el texto copiado del PDF...&#10;&#10;Ejemplo (con celdas vacías marcadas con -)&#10;1 apellido, nombre  NAD  ADE  -    BUE  EXC  ADE&#10;2 nombre apellido   ADE  -    BUE  BUE  ADE  EXC&#10;..."
+                : "Pega aquí el texto copiado del PDF...&#10;&#10;Ejemplo (con celdas vacías marcadas con -)&#10;1 apellido, nombre  IN  SU  -  BI  NT  SB  BI  -&#10;2 nombre apellido   SU  -  BI  NT  IN  SB  -  BI&#10;...";
+            
             const app = document.getElementById('app');
             app.innerHTML = `
                 <div class="container">
@@ -562,12 +567,18 @@
                                 <li><strong>Selecciona toda la tabla</strong> con el ratón (arrastra sobre la tabla)</li>
                                 <li><strong>Copia</strong> con Ctrl+C (Windows) o Cmd+C (Mac)</li>
                                 <li><strong>Pega aquí abajo</strong> con Ctrl+V o Cmd+V</li>
+                                <li><strong>IMPORTANTE:</strong> Si hay celdas vacías (REL, ATEDU, REV), añade un <strong>guión (-)</strong> en esa posición</li>
                             </ol>
+                            <div style="background: #fef3c7; border: 2px solid #f59e0b; padding: 0.75rem; border-radius: 0.5rem; margin-top: 0.75rem; color: #92400e;">
+                                <strong>⚠️ Celdas Vacías:</strong> Las materias ${isInfantil ? 'REL y ATEDU' : 'REL, ATEDU y REV'} son optativas (cada alumno solo cursa una).<br>
+                                Si una celda está vacía, escribe un <strong>guión (-)</strong> para mantener las columnas alineadas.<br>
+                                <strong>Ejemplo:</strong> Si no hace REL → <code>${isInfantil ? 'BUE  -  ADE  EXC  BUE  ADE' : 'IN  -  BI  NT  SB  BI  NT  -'}</code>
+                            </div>
                         </div>
 
                         <div class="input-group">
                             <label>Pega aquí el contenido de la tabla:</label>
-                            <textarea id="pastedTable" placeholder="Pega aquí el texto copiado del PDF...&#10;&#10;Ejemplo:&#10;1 apellido, nombre falso NAD ADE BUE EXC&#10;2 nombre y apellido falso ADE BUE EXC NAD&#10;..."></textarea>
+                            <textarea id="pastedTable" placeholder="${placeholderExample}"></textarea>
                             <p class="help-text">
                                 💡 La aplicación detectará automáticamente las calificaciones
                             </p>
@@ -677,34 +688,48 @@
             // Split lines and clean
             const lines = text.split(/\r?\n/).filter(line => line.trim());
             let studentsFound = 0;
-            let inconsistentRows = 0;
+            let problemRows = 0;
 
-            // Process each line - extract ALL grades in order
-            lines.forEach(line => {
-                // Find all grade matches in this line
-                const gradePattern = new RegExp('\\b(' + grades.join('|') + ')\\b', 'gi');
-                const matches = line.match(gradePattern);
+            // Process each line
+            lines.forEach((line, lineIndex) => {
+                // Dividir por espacios múltiples o tabuladores
+                const cells = line.trim().split(/\s+/);
                 
-                if (matches && matches.length > 0) {
+                // Buscar calificaciones y guiones en la línea
+                const rowData = [];
+                cells.forEach(cell => {
+                    const upperCell = cell.toUpperCase();
+                    // Si es una calificación válida, añadirla
+                    if (grades.includes(upperCell)) {
+                        rowData.push(upperCell);
+                    }
+                    // Si es un guión o marcador de celda vacía, añadir null
+                    else if (cell === '-' || cell === 'X' || cell === '_' || cell === '–') {
+                        rowData.push(null);
+                    }
+                });
+                
+                // Si encontramos datos en esta fila
+                if (rowData.length > 0) {
                     studentsFound++;
                     
-                    // Check if we have the expected number of grades
-                    if (matches.length !== expectedColumns) {
-                        inconsistentRows++;
-                        console.warn(`Fila ${studentsFound}: Se esperaban ${expectedColumns} calificaciones, se encontraron ${matches.length}`);
+                    // Verificar si tenemos el número correcto de columnas
+                    if (rowData.length !== expectedColumns) {
+                        problemRows++;
+                        console.warn(`Fila ${studentsFound}: Se esperaban ${expectedColumns} columnas, se encontraron ${rowData.length}`);
                     }
                     
-                    // Assign grades to subjects by position (even if incomplete)
-                    matches.forEach((grade, colIndex) => {
-                        if (colIndex < subjectCodes.length) {
-                            result.grades[subjectCodes[colIndex]][grade.toUpperCase()]++;
+                    // Asignar calificaciones por columna
+                    rowData.forEach((grade, colIndex) => {
+                        if (colIndex < subjectCodes.length && grade !== null) {
+                            result.grades[subjectCodes[colIndex]][grade]++;
                         }
                     });
                 }
             });
 
             if (studentsFound === 0) {
-                result.error = 'No se detectaron alumnos. Copia toda la tabla del PDF.';
+                result.error = 'No se detectaron alumnos. Asegúrate de copiar toda la tabla del PDF.';
                 return result;
             }
 
@@ -716,13 +741,18 @@
             });
 
             if (!hasValidData) {
-                result.error = 'No se detectaron calificaciones válidas.';
+                result.error = 'No se detectaron calificaciones válidas. Verifica el formato de la tabla.';
                 return result;
             }
 
-            // Warn if there were inconsistent rows
-            if (inconsistentRows > 0) {
-                result.warning = `Atención: ${inconsistentRows} filas tienen un número de calificaciones diferente al esperado. Revisa los resultados.`;
+            // Advertencia si hay filas problemáticas
+            if (problemRows > 0) {
+                result.warning = `⚠️ ATENCIÓN: ${problemRows} fila(s) no tienen el número correcto de columnas.\n\n` +
+                    `💡 SOLUCIÓN: Cuando copies la tabla del PDF:\n` +
+                    `• Si una celda está vacía (REL, ATEDU, RELV sin nota), escribe un GUIÓN (-)\n` +
+                    `• Ejemplo: Si un alumno no hace REL, pon:  BUE  -  ADE  EXC  BUE  ADE\n` +
+                    `• Esto mantiene las columnas alineadas y cada materia cuenta correctamente.\n\n` +
+                    `Si los resultados no son correctos, usa "Introducir datos manualmente".`;
             }
 
             result.totalStudents = studentsFound;
