@@ -107,6 +107,15 @@
             background: #0284c7;
         }
 
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
         .grid-2 {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -373,6 +382,15 @@
             margin-bottom: 0.25rem;
         }
 
+        @media print {
+            body {
+                background: white;
+            }
+            .btn, .back-link, .btn-group {
+                display: none !important;
+            }
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -407,6 +425,8 @@
 
         const infantilCourses = ['3 años', '4 años', '5 años'];
         const primariaCourses = ['1º Primaria', '2º Primaria', '3º Primaria', '4º Primaria', '5º Primaria', '6º Primaria'];
+        
+        // Calificaciones actualizadas
         const infantilGrades = ['NAD', 'ADE', 'BUE', 'EXC'];
         const primariaGrades = ['IN', 'SU', 'BI', 'NT', 'SB'];
 
@@ -416,6 +436,23 @@
             BUE: '#60a5fa', BI: '#60a5fa',
             EXC: '#10b981', NT: '#34d399', SB: '#10b981'
         };
+
+        // Definición de asignaturas según curso
+        function getSubjectsForCourse(stage, course) {
+            if (stage === 'infantil') {
+                return ['ING', 'REL', 'ATEDU', 'CA', 'DEE', 'CRR'];
+            } else if (stage === 'primaria') {
+                if (course === '1º Primaria' || course === '2º Primaria' || 
+                    course === '3º Primaria' || course === '4º Primaria') {
+                    return ['CMN', 'EAR', 'EFI', 'LCL', 'ING', 'MAT', 'REL', 'ATEDU'];
+                } else if (course === '5º Primaria') {
+                    return ['CMN', 'EAR', 'EFI', 'LCL', 'ING', 'MAT', 'FR2', 'ALCT', 'REL', 'REV', 'ATEDU'];
+                } else if (course === '6º Primaria') {
+                    return ['CMN', 'EAR', 'EFI', 'LCL', 'ING', 'MAT', 'FR2', 'VCE', 'REL', 'REV', 'ATEDU'];
+                }
+            }
+            return [];
+        }
 
         // Funciones para dibujar gráficas
         function drawPieChart(canvasId, data, colors) {
@@ -530,7 +567,7 @@
 
                         <div class="input-group">
                             <label>Pega aquí el contenido de la tabla:</label>
-                            <textarea id="pastedTable" placeholder="Pega aquí el texto copiado del PDF...&#10;&#10;Ejemplo:&#10;1 apellido, nombre falso IN SU BI NT SB&#10;2 nombre y apellido falso SU BI NT IN SB&#10;..."></textarea>
+                            <textarea id="pastedTable" placeholder="Pega aquí el texto copiado del PDF...&#10;&#10;Ejemplo:&#10;1 apellido, nombre falso NAD ADE BUE EXC&#10;2 nombre y apellido falso ADE BUE EXC NAD&#10;..."></textarea>
                             <p class="help-text">
                                 💡 La aplicación detectará automáticamente las calificaciones
                             </p>
@@ -570,12 +607,23 @@
                     state.subjects = Object.keys(parsed.grades);
                     state.uploadedFile = { name: 'pasted-table' };
 
+                    let warningHtml = '';
+                    if (parsed.warning) {
+                        warningHtml = `
+                            <div class="info-box" style="background: #fef3c7; border-color: #f59e0b; color: #92400e; margin-top: 1rem;">
+                                <strong>⚠️ ${parsed.warning}</strong>
+                                <p style="margin-top: 0.5rem;">Verifica que los datos sean correctos. Si hay errores, usa la opción "Introducir datos manualmente".</p>
+                            </div>
+                        `;
+                    }
+
                     resultDiv.innerHTML = `
                         <div class="success-box">
                             <strong>✅ Tabla procesada correctamente</strong>
                             <p><strong>${parsed.totalStudents}</strong> alumnos detectados</p>
                             <p><strong>${state.subjects.length}</strong> asignaturas encontradas: ${state.subjects.join(', ')}</p>
                         </div>
+                        ${warningHtml}
                     `;
 
                     setTimeout(() => {
@@ -608,9 +656,8 @@
 
         function parseTableText(text) {
             const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
-            const subjectCodes = state.stage === 'infantil'
-                ? ['Conocimiento', 'Lenguajes', 'Ingles', 'Religion']
-                : ['CMN', 'EAR', 'EFI', 'LCL', 'ING', 'MAT', 'FR2', 'VCE', 'REL', 'REV'];
+            const subjectCodes = getSubjectsForCourse(state.stage, state.selectedCourse);
+            const expectedColumns = subjectCodes.length;
 
             const result = {
                 success: false,
@@ -619,7 +666,7 @@
                 error: ''
             };
 
-            // Inicializar contadores
+            // Initialize counters
             subjectCodes.forEach(subject => {
                 result.grades[subject] = {};
                 grades.forEach(grade => {
@@ -627,53 +674,41 @@
                 });
             });
 
-            // Limpiar y normalizar texto
-            const normalizedText = text
-                .toUpperCase()
-                .replace(/\s+/g, ' ')
-                .replace(/[áàâãä]/gi, 'A')
-                .replace(/[éèêë]/gi, 'E')
-                .replace(/[íìîï]/gi, 'I')
-                .replace(/[óòôõö]/gi, 'O')
-                .replace(/[úùûü]/gi, 'U');
-
-            const lines = normalizedText.split('\n');
+            // Split lines and clean
+            const lines = text.split(/\r?\n/).filter(line => line.trim());
             let studentsFound = 0;
+            let inconsistentRows = 0;
 
-            // Procesar cada línea
+            // Process each line - extract ALL grades in order
             lines.forEach(line => {
-                const trimmedLine = line.trim();
-                if (!trimmedLine) return;
-
-                // Detectar si es una línea de alumno (comienza con número o tiene nombre)
-                const hasNumber = /^\d+/.test(trimmedLine);
-                const hasName = /[A-Z]{3,}/.test(trimmedLine);
-
-                if (hasNumber || hasName) {
+                // Find all grade matches in this line
+                const gradePattern = new RegExp('\\b(' + grades.join('|') + ')\\b', 'gi');
+                const matches = line.match(gradePattern);
+                
+                if (matches && matches.length > 0) {
                     studentsFound++;
-
-                    // Buscar calificaciones en la línea
-                    subjectCodes.forEach(subject => {
-                        grades.forEach(grade => {
-                            // Buscar el patrón de calificación
-                            const gradePattern = new RegExp('\\b' + grade + '\\b', 'g');
-                            const matches = trimmedLine.match(gradePattern);
-                            if (matches) {
-                                // Si encontramos la calificación, incrementar contador
-                                // Pero solo una vez por asignatura por línea
-                                result.grades[subject][grade]++;
-                            }
-                        });
+                    
+                    // Check if we have the expected number of grades
+                    if (matches.length !== expectedColumns) {
+                        inconsistentRows++;
+                        console.warn(`Fila ${studentsFound}: Se esperaban ${expectedColumns} calificaciones, se encontraron ${matches.length}`);
+                    }
+                    
+                    // Assign grades to subjects by position (even if incomplete)
+                    matches.forEach((grade, colIndex) => {
+                        if (colIndex < subjectCodes.length) {
+                            result.grades[subjectCodes[colIndex]][grade.toUpperCase()]++;
+                        }
                     });
                 }
             });
 
             if (studentsFound === 0) {
-                result.error = 'No se detectaron alumnos en el texto. Asegúrate de copiar toda la tabla.';
+                result.error = 'No se detectaron alumnos. Copia toda la tabla del PDF.';
                 return result;
             }
 
-            // Verificar que tenemos datos válidos
+            // Verify we have valid data
             let hasValidData = false;
             subjectCodes.forEach(subject => {
                 const total = Object.values(result.grades[subject]).reduce((sum, val) => sum + val, 0);
@@ -681,8 +716,13 @@
             });
 
             if (!hasValidData) {
-                result.error = 'No se detectaron calificaciones válidas. Verifica que el formato sea correcto.';
+                result.error = 'No se detectaron calificaciones válidas.';
                 return result;
+            }
+
+            // Warn if there were inconsistent rows
+            if (inconsistentRows > 0) {
+                result.warning = `Atención: ${inconsistentRows} filas tienen un número de calificaciones diferente al esperado. Revisa los resultados.`;
             }
 
             result.totalStudents = studentsFound;
@@ -693,9 +733,7 @@
 
         function showManualInput() {
             const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
-            const subjects = state.stage === 'infantil' 
-                ? ['Conocimiento de sí mismo', 'Conocimiento del entorno', 'Lenguajes: comunicación', 'Inglés', 'Religión']
-                : ['CMN', 'EAR', 'EFI', 'LCL', 'ING', 'MAT', 'FR2', 'VCE', 'REL', 'REV'];
+            const subjects = getSubjectsForCourse(state.stage, state.selectedCourse);
             
             const app = document.getElementById('app');
             app.innerHTML = `
@@ -746,9 +784,7 @@
             state.totalStudents = totalStudents;
             
             const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
-            const subjects = state.stage === 'infantil' 
-                ? ['Conocimiento de sí mismo', 'Conocimiento del entorno', 'Lenguajes: comunicación', 'Inglés', 'Religión']
-                : ['CMN', 'EAR', 'EFI', 'LCL', 'ING', 'MAT', 'FR2', 'VCE', 'REL', 'REV'];
+            const subjects = getSubjectsForCourse(state.stage, state.selectedCourse);
             
             const manualData = {};
             subjects.forEach(subject => {
@@ -889,8 +925,11 @@
                     <div class="flex-between">
                         <h1>📊 Resultados del Análisis</h1>
                         <div class="btn-group">
+                            <button class="btn btn-warning" onclick="downloadPDFWithCharts()">
+                                🖨️ PDF con Gráficas
+                            </button>
                             <button class="btn btn-success" onclick="downloadPDF()">
-                                💾 PDF
+                                💾 PDF Texto
                             </button>
                             <button class="btn btn-info" onclick="downloadExcel()">
                                 📊 Excel
@@ -901,7 +940,7 @@
                         </div>
                     </div>
 
-                    <div class="card">
+                    <div class="card" id="results-container">
                         <h2>Resumen General</h2>
                         <div class="grid-3">
                             <div class="stat-box" style="background: #dbeafe;">
@@ -970,22 +1009,28 @@
                                 ` : ''}
                             </div>
 
+                            <div style="margin: 1rem 0; padding: 0.75rem; background: #f9fafb; border-radius: 0.5rem;">
+                                <strong>Resumen:</strong> 
+                                <span style="color: #10b981;">✓ ${stat.passPercentage}% aprobados</span> | 
+                                <span style="color: #ef4444;">✗ ${stat.failPercentage}% suspensos</span>
+                            </div>
+
                             <div class="grid-2">
                                 <div>
-                                    <h3 style="text-align: center;">Aprobados vs Suspensos</h3>
+                                    <h3 style="text-align: center;">Distribución</h3>
                                     <div class="chart-container">
-                                        <canvas id="pieChart${idx}" width="350" height="250"></canvas>
+                                        <canvas id="pieChart${idx}" width="400" height="300"></canvas>
                                     </div>
                                 </div>
                                 <div>
-                                    <h3 style="text-align: center;">Distribución de Calificaciones</h3>
+                                    <h3 style="text-align: center;">Por Calificación</h3>
                                     <div class="chart-container">
-                                        <canvas id="barChart${idx}" width="350" height="250"></canvas>
+                                        <canvas id="barChart${idx}" width="400" height="300"></canvas>
                                     </div>
                                 </div>
                             </div>
 
-                            <h3>Detalle por Calificación</h3>
+                            <h3>Detalle de Calificaciones</h3>
                             <div class="grid-3" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
                                 ${Object.entries(stat.gradePercentages).map(([grade, percentage]) => `
                                     <div class="grade-badge" style="border-color: ${COLORS[grade]};">
@@ -997,7 +1042,6 @@
                             </div>
 
                             <div class="comment-box">
-                                <strong>📝 Análisis de Resultados:</strong><br><br>
                                 ${stat.comment}
                             </div>
                         </div>
@@ -1008,35 +1052,61 @@
             app.innerHTML = html;
             
             setTimeout(() => {
-                drawPieChart('globalPieChart', [
-                    { label: 'Aprobados', value: state.globalStats.passed, percentage: state.globalStats.passPercentage },
-                    { label: 'Suspensos', value: state.globalStats.failed, percentage: state.globalStats.failPercentage }
-                ], ['#10b981', '#ef4444']);
-
-                const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
-                drawBarChart('globalBarChart', 
-                    grades.map(grade => ({
-                        label: grade,
-                        value: state.globalStats.gradeDistribution[grade]
-                    })),
-                    grades.map(grade => COLORS[grade])
-                );
-
-                state.statistics.forEach((stat, idx) => {
-                    drawPieChart(`pieChart${idx}`, [
-                        { label: 'Aprobados', value: stat.passed, percentage: stat.passPercentage },
-                        { label: 'Suspensos', value: stat.failed, percentage: stat.failPercentage }
-                    ], ['#10b981', '#ef4444']);
-
-                    drawBarChart(`barChart${idx}`,
-                        grades.map(grade => ({
-                            label: grade,
-                            value: stat.gradeDistribution[grade]
-                        })),
-                        grades.map(grade => COLORS[grade])
-                    );
-                });
+                drawGlobalCharts();
+                state.statistics.forEach((stat, idx) => drawSubjectCharts(stat, idx));
             }, 100);
+        }
+
+        function drawGlobalCharts() {
+            const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
+            const failGrade = grades[0];
+            
+            const pieData = [
+                {
+                    label: 'Aprobados',
+                    value: state.globalStats.passed,
+                    percentage: state.globalStats.passPercentage
+                },
+                {
+                    label: 'Suspensos',
+                    value: state.globalStats.failed,
+                    percentage: state.globalStats.failPercentage
+                }
+            ];
+            drawPieChart('globalPieChart', pieData, ['#10b981', '#ef4444']);
+            
+            const barData = grades.map(grade => ({
+                label: grade,
+                value: state.globalStats.gradeDistribution[grade]
+            }));
+            const barColors = grades.map(grade => COLORS[grade]);
+            drawBarChart('globalBarChart', barData, barColors);
+        }
+
+        function drawSubjectCharts(stat, idx) {
+            const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
+            const failGrade = grades[0];
+            
+            const pieData = [
+                {
+                    label: 'Aprobados',
+                    value: stat.passed,
+                    percentage: stat.passPercentage
+                },
+                {
+                    label: 'Suspensos',
+                    value: stat.failed,
+                    percentage: stat.failPercentage
+                }
+            ];
+            drawPieChart(`pieChart${idx}`, pieData, ['#10b981', '#ef4444']);
+            
+            const barData = grades.map(grade => ({
+                label: grade,
+                value: stat.gradeDistribution[grade]
+            }));
+            const barColors = grades.map(grade => COLORS[grade]);
+            drawBarChart(`barChart${idx}`, barData, barColors);
         }
 
         function selectStage(stage) {
@@ -1058,120 +1128,145 @@
             state.selectedSubjects = [];
             state.statistics = null;
             state.globalStats = null;
-            state.totalStudents = 21;
             render();
         }
 
         function toggleSubject(subject) {
-            const idx = state.selectedSubjects.indexOf(subject);
-            if (idx > -1) {
-                state.selectedSubjects.splice(idx, 1);
+            const index = state.selectedSubjects.indexOf(subject);
+            if (index > -1) {
+                state.selectedSubjects.splice(index, 1);
             } else {
                 state.selectedSubjects.push(subject);
             }
             render();
         }
 
-        function generateComment(stat, stageType) {
-            let comment = '';
+        function generateGlobalComment(globalStats, stage) {
+            const grades = stage === 'infantil' ? infantilGrades : primariaGrades;
+            const passPercentage = parseFloat(globalStats.passPercentage);
+            const failPercentage = parseFloat(globalStats.failPercentage);
             
-            if (stat.failPercentage > 50) {
-                comment = `Situacion critica: Mas de la mitad del alumnado (${stat.failPercentage}%) no alcanza los objetivos minimos. Se requiere intervencion inmediata.`;
-            } else if (stat.failPercentage > 30) {
-                comment = `Alerta importante: Un ${stat.failPercentage}% presenta dificultades significativas. Implementar medidas de apoyo.`;
-            } else if (stat.failPercentage > 15) {
-                comment = `Atencion necesaria: El ${stat.failPercentage}% requiere apoyo adicional. Seguimiento individualizado recomendado.`;
-            } else if (stat.failPercentage > 0) {
-                comment = `Resultados satisfactorios: ${stat.passPercentage}% aprobados. Solo ${stat.failPercentage}% necesita refuerzo puntual.`;
+            let comment = '📊 ANÁLISIS GLOBAL DEL CURSO\n\n';
+            
+            if (passPercentage >= 90) {
+                comment += '🌟 Rendimiento Sobresaliente: El curso muestra resultados excepcionales con un ' + passPercentage + '% de aprobados.\n\n';
+            } else if (passPercentage >= 75) {
+                comment += '✅ Buen Rendimiento: El curso presenta buenos resultados académicos con un ' + passPercentage + '% de aprobados.\n\n';
+            } else if (passPercentage >= 60) {
+                comment += '⚡ Rendimiento Aceptable: El curso mantiene un nivel aceptable con un ' + passPercentage + '% de aprobados, aunque hay margen de mejora.\n\n';
             } else {
-                comment = `Excelentes resultados: 100% del alumnado ha superado los objetivos.`;
+                comment += '⚠️ Rendimiento Preocupante: Se detecta un bajo porcentaje de aprobados (' + passPercentage + '%), se recomienda intervención pedagógica.\n\n';
             }
-
-            const excellentGrades = stageType === 'infantil' ? ['EXC'] : ['SB', 'NT'];
-            const excellentCount = excellentGrades.reduce((sum, grade) => sum + (stat.gradeDistribution[grade] || 0), 0);
-            const excellentPercentage = ((excellentCount / stat.total) * 100).toFixed(1);
             
-            if (excellentPercentage > 50) {
-                comment += ` Destacable: ${excellentPercentage}% alcanza niveles de excelencia.`;
-            } else if (excellentPercentage > 30) {
-                comment += ` Un ${excellentPercentage}% muestra rendimiento excelente.`;
+            comment += '📋 Distribución de Calificaciones:\n';
+            grades.forEach(grade => {
+                const percentage = globalStats.gradePercentages[grade];
+                const count = globalStats.gradeDistribution[grade];
+                comment += `   • ${grade}: ${count} calificaciones (${percentage}%)\n`;
+            });
+            
+            comment += '\n💡 Observaciones:\n';
+            
+            if (failPercentage > 30) {
+                comment += '   • Alto porcentaje de suspensos (' + failPercentage + '%) - Se sugiere refuerzo educativo urgente\n';
+            } else if (failPercentage > 15) {
+                comment += '   • Porcentaje moderado de suspensos (' + failPercentage + '%) - Considerar apoyos adicionales\n';
+            } else if (failPercentage > 0) {
+                comment += '   • Bajo porcentaje de suspensos (' + failPercentage + '%) - Dentro de parámetros normales\n';
+            } else {
+                comment += '   • Sin suspensos - Rendimiento excepcional del grupo\n';
             }
-
+            
+            const topGrade = grades[grades.length - 1];
+            const topPercentage = parseFloat(globalStats.gradePercentages[topGrade]);
+            if (topPercentage > 40) {
+                comment += `   • Excelente concentración en calificaciones altas (${topGrade}: ${topPercentage}%)\n`;
+            }
+            
             return comment;
         }
 
-        function generateGlobalComment(global, stageType) {
-            const failPercentage = parseFloat(global.failPercentage);
-            let comment = 'ANALISIS GLOBAL DEL CURSO\n\n';
+        function generateSubjectComment(stat, stage) {
+            const grades = stage === 'infantil' ? infantilGrades : primariaGrades;
+            const passPercentage = parseFloat(stat.passPercentage);
+            const failPercentage = parseFloat(stat.failPercentage);
             
-            if (failPercentage > 40) {
-                comment += `Situacion Critica: ${global.failPercentage}% de calificaciones insuficientes.\n\nRequiere:\n- Revision de metodologias\n- Programas de refuerzo\n- Coordinacion con orientacion`;
-            } else if (failPercentage > 25) {
-                comment += `Necesidad de Mejora: ${global.failPercentage}% insuficientes.\n\nRecomendaciones:\n- Reforzar areas criticas\n- Grupos de apoyo\n- Seguimiento frecuente`;
-            } else if (failPercentage > 10) {
-                comment += `Resultados Aceptables: ${global.passPercentage}% aprobados.\n\n- Mantener apoyo al ${global.failPercentage}% con dificultades\n- Continuar metodologias actuales`;
+            let comment = '';
+            
+            if (passPercentage >= 90) {
+                comment += '✅ Excelentes resultados en esta asignatura. ';
+            } else if (passPercentage >= 75) {
+                comment += '✓ Buenos resultados generales. ';
+            } else if (passPercentage >= 60) {
+                comment += '⚡ Resultados aceptables pero mejorables. ';
             } else {
-                comment += `Resultados Excelentes: ${global.passPercentage}% aprobados.\n\n- Metodologias efectivas\n- Clima favorable\n- Continuar potenciando fortalezas`;
+                comment += '⚠️ Resultados preocupantes que requieren atención. ';
             }
-
-            const excellentGrades = stageType === 'infantil' ? ['EXC'] : ['SB', 'NT'];
-            const excellentPercentage = excellentGrades.reduce((sum, grade) => 
-                sum + parseFloat(global.gradePercentages[grade] || 0), 0).toFixed(1);
             
-            comment += `\n\nNivel de Excelencia: ${excellentPercentage}% en niveles mas altos.`;
+            if (stat.alert) {
+                comment += '\n\n🚨 ALERTA: Más del 30% de suspensos (' + failPercentage + '%). ';
+                comment += 'Se recomienda:\n';
+                comment += '   • Revisión de metodología de enseñanza\n';
+                comment += '   • Refuerzo educativo individualizado\n';
+                comment += '   • Coordinación con el equipo docente\n';
+            }
+            
+            const topGrade = grades[grades.length - 1];
+            const topPercentage = parseFloat(stat.gradePercentages[topGrade]);
+            
+            if (topPercentage > 50) {
+                comment += `\n\n🌟 Destacable: ${topPercentage}% de los alumnos obtiene la máxima calificación (${topGrade}).`;
+            } else if (topPercentage > 30) {
+                comment += `\n\n👍 Positivo: ${topPercentage}% alcanza la máxima calificación (${topGrade}).`;
+            }
+            
+            comment += '\n\nDistribución: ';
+            const distribution = grades.map(grade => 
+                `${grade} ${stat.gradePercentages[grade]}%`
+            ).join(' | ');
+            comment += distribution;
+            
             return comment;
         }
 
         function generateStatistics() {
             const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
-            const failGrade = state.stage === 'infantil' ? 'NAD' : 'IN';
+            const failGrade = grades[0];
             
             const stats = state.selectedSubjects.map(subject => {
-                let gradeDistribution = {};
+                const subjectData = state.pdfData[subject];
                 
-                if (state.pdfData && state.pdfData[subject]) {
-                    gradeDistribution = state.pdfData[subject];
-                } else {
-                    const total = state.totalStudents;
-                    let remaining = total;
-                    
-                    grades.forEach((grade, idx) => {
-                        if (idx === grades.length - 1) {
-                            gradeDistribution[grade] = remaining;
-                        } else {
-                            const maxForGrade = Math.floor(remaining * 0.4);
-                            const count = Math.floor(Math.random() * maxForGrade);
-                            gradeDistribution[grade] = count;
-                            remaining -= count;
-                        }
-                    });
-                }
-
-                const total = Object.values(gradeDistribution).reduce((sum, val) => sum + val, 0);
-                const failed = gradeDistribution[failGrade] || 0;
-                const passed = total - failed;
-                const failPercentage = total > 0 ? (failed / total) * 100 : 0;
-                const passPercentage = total > 0 ? (passed / total) * 100 : 0;
-
-                const gradePercentages = {};
-                Object.entries(gradeDistribution).forEach(([grade, count]) => {
-                    gradePercentages[grade] = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+                const gradeDistribution = {};
+                grades.forEach(grade => {
+                    gradeDistribution[grade] = subjectData[grade] || 0;
                 });
-
-                const statObj = {
+                
+                const failed = gradeDistribution[failGrade];
+                const total = Object.values(gradeDistribution).reduce((sum, val) => sum + val, 0);
+                const passed = total - failed;
+                
+                const passPercentage = total > 0 ? ((passed / total) * 100).toFixed(1) : '0.0';
+                const failPercentage = total > 0 ? ((failed / total) * 100).toFixed(1) : '0.0';
+                
+                const gradePercentages = {};
+                grades.forEach(grade => {
+                    gradePercentages[grade] = total > 0 ? ((gradeDistribution[grade] / total) * 100).toFixed(1) : '0.0';
+                });
+                
+                const stat = {
                     subject,
-                    total,
                     gradeDistribution,
                     gradePercentages,
                     passed,
                     failed,
-                    passPercentage: passPercentage.toFixed(1),
-                    failPercentage: failPercentage.toFixed(1),
-                    alert: failPercentage > 30
+                    passPercentage,
+                    failPercentage,
+                    alert: parseFloat(failPercentage) > 30
                 };
-
-                statObj.comment = generateComment(statObj, state.stage);
-                return statObj;
+                
+                stat.comment = generateSubjectComment(stat, state.stage);
+                
+                return stat;
             });
 
             state.statistics = stats;
@@ -1213,7 +1308,192 @@
         }
 
         function cleanText(text) {
-            return text.replace(/[⚠✅⚡🌟📝📋📊💾🎨📚📤📷✏️📄✓✗]/g, '').trim();
+            return text.replace(/[⚠✅⚡🌟📝📋📊💾🎨📚📤📷✏️📄✓✗🚨👍💡]/g, '').trim();
+        }
+
+        function downloadPDFWithCharts() {
+            // Mostrar indicador de carga
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'pdfLoading';
+            loadingDiv.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                background: rgba(99, 102, 241, 0.95); display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; 
+                z-index: 9999; color: white;
+            `;
+            loadingDiv.innerHTML = `
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+                <div style="font-size: 1.5rem; font-weight: bold;">Generando PDF con gráficas...</div>
+                <div style="font-size: 1rem; margin-top: 0.5rem;">Esto puede tardar unos segundos</div>
+            `;
+            document.body.appendChild(loadingDiv);
+            
+            setTimeout(() => {
+                try {
+                    generatePDFWithCharts();
+                    document.body.removeChild(loadingDiv);
+                } catch (error) {
+                    document.body.removeChild(loadingDiv);
+                    console.error('Error:', error);
+                    alert('Error al generar PDF con gráficas. Intenta usar el PDF de texto.');
+                }
+            }, 100);
+        }
+
+        function generatePDFWithCharts() {
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                
+                // Título
+                pdf.setFontSize(18);
+                pdf.setTextColor(99, 102, 241);
+                pdf.text('INFORME DE ANALISIS DE ACTAS', pageWidth / 2, 20, { align: 'center' });
+                
+                pdf.setFontSize(12);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text(`${state.stage === 'infantil' ? 'Infantil' : 'Primaria'} - ${state.selectedCourse}`, pageWidth / 2, 28, { align: 'center' });
+                pdf.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, pageWidth / 2, 35, { align: 'center' });
+                
+                let y = 48;
+
+                // Resumen general
+                pdf.setFontSize(14);
+                pdf.setTextColor(99, 102, 241);
+                pdf.text('RESUMEN GENERAL', 20, y);
+                y += 8;
+
+                pdf.setFontSize(10);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text(`Total de alumnos: ${state.totalStudents}`, 20, y);
+                y += 6;
+                pdf.text(`Asignaturas analizadas: ${state.statistics.length}`, 20, y);
+                y += 6;
+                pdf.text(`Alertas detectadas: ${state.statistics.filter(s => s.alert).length}`, 20, y);
+                y += 15;
+
+                // Gráficas globales
+                pdf.setFontSize(14);
+                pdf.setTextColor(99, 102, 241);
+                pdf.text('GRAFICAS GLOBALES', 20, y);
+                y += 8;
+
+                const globalPieCanvas = document.getElementById('globalPieChart');
+                const globalBarCanvas = document.getElementById('globalBarChart');
+                
+                if (globalPieCanvas) {
+                    const pieImg = globalPieCanvas.toDataURL('image/png');
+                    pdf.addImage(pieImg, 'PNG', 20, y, 80, 60);
+                }
+                
+                if (globalBarCanvas) {
+                    const barImg = globalBarCanvas.toDataURL('image/png');
+                    pdf.addImage(barImg, 'PNG', 110, y, 80, 60);
+                }
+                
+                y += 70;
+
+                // Estadísticas globales
+                const grades = state.stage === 'infantil' ? infantilGrades : primariaGrades;
+                pdf.setFontSize(12);
+                pdf.text(`Aprobados: ${state.globalStats.passPercentage}% | Suspensos: ${state.globalStats.failPercentage}%`, 20, y);
+                y += 8;
+
+                pdf.setFontSize(10);
+                pdf.text('Distribucion por calificacion:', 20, y);
+                y += 6;
+                grades.forEach(grade => {
+                    pdf.text(`  ${grade}: ${state.globalStats.gradeDistribution[grade]} (${state.globalStats.gradePercentages[grade]}%)`, 20, y);
+                    y += 5;
+                });
+                y += 5;
+
+                const globalComment = cleanText(state.globalStats.comment);
+                const globalLines = pdf.splitTextToSize(globalComment, pageWidth - 40);
+                globalLines.forEach(line => {
+                    if (y > pageHeight - 20) {
+                        pdf.addPage();
+                        y = 20;
+                    }
+                    pdf.text(line, 20, y);
+                    y += 5;
+                });
+
+                // Asignaturas individuales
+                for (let index = 0; index < state.statistics.length; index++) {
+                    const stat = state.statistics[index];
+                    
+                    if (y > pageHeight - 100) {
+                        pdf.addPage();
+                        y = 20;
+                    } else {
+                        y += 10;
+                    }
+
+                    pdf.setFontSize(12);
+                    pdf.setTextColor(99, 102, 241);
+                    pdf.text(`${index + 1}. ${stat.subject}`, 20, y);
+                    y += 8;
+
+                    if (stat.alert) {
+                        pdf.setTextColor(239, 68, 68);
+                        pdf.setFontSize(9);
+                        pdf.text(`ALERTA: Mas del 30% de suspensos (${stat.failPercentage}%)`, 20, y);
+                        y += 6;
+                    }
+
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(0, 0, 0);
+                    pdf.text(`Aprobados: ${stat.passPercentage}% | Suspensos: ${stat.failPercentage}%`, 20, y);
+                    y += 8;
+
+                    // Gráficas de la asignatura
+                    const pieCanvas = document.getElementById(`pieChart${index}`);
+                    const barCanvas = document.getElementById(`barChart${index}`);
+                    
+                    if (pieCanvas) {
+                        const pieImg = pieCanvas.toDataURL('image/png');
+                        pdf.addImage(pieImg, 'PNG', 20, y, 70, 52);
+                    }
+                    
+                    if (barCanvas) {
+                        const barImg = barCanvas.toDataURL('image/png');
+                        pdf.addImage(barImg, 'PNG', 100, y, 70, 52);
+                    }
+                    
+                    y += 58;
+
+                    pdf.text('Distribucion:', 20, y);
+                    y += 5;
+                    grades.forEach(grade => {
+                        if (y > pageHeight - 20) {
+                            pdf.addPage();
+                            y = 20;
+                        }
+                        pdf.text(`  ${grade}: ${stat.gradeDistribution[grade]} alumnos (${stat.gradePercentages[grade]}%)`, 20, y);
+                        y += 4;
+                    });
+                    y += 5;
+
+                    const comment = cleanText(stat.comment);
+                    const commentLines = pdf.splitTextToSize(comment, pageWidth - 40);
+                    commentLines.forEach(line => {
+                        if (y > pageHeight - 20) {
+                            pdf.addPage();
+                            y = 20;
+                        }
+                        pdf.text(line, 20, y);
+                        y += 4;
+                    });
+                }
+
+                pdf.save(`Informe_Graficas_${state.stage}_${state.selectedCourse}_${new Date().toISOString().split('T')[0]}.pdf`);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al generar PDF con gráficas');
+            }
         }
 
         function downloadPDF() {
